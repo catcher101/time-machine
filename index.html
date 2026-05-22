@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>时光穿梭机 · 看见你的一生</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <style>
+    :root {
+      --ink: #1a1a2e;
+      --ink-soft: #2d2d4e;
+      --ink-muted: #6b6b8a;
+      --paper: #faf8f4;
+      --paper-warm: #f5f0e8;
+      --gold: #c9a84c;
+      --gold-light: #e8d08a;
+      --gold-dim: rgba(201,168,76,0.15);
+      --star: #e8e0f0;
+      --accent: #7b6fa0;
+      --accent-light: #a99dc8;
+      --glow: rgba(123,111,160,0.3);
+      --radius: 16px;
+      --transition: 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%;
+      background: var(--ink);
+      font-family: 'Noto Sans SC', sans-serif;
+      color: var(--paper);
+      overflow: hidden;
+    }
+
+    /* ── 星空背景 ── */
+    #starfield {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none;
+    }
+    .star {
+      position: absolute;
+      border-radius: 50%;
+      background: var(--star);
+      animation: twinkle var(--d, 3s) ease-in-out infinite var(--delay, 0s);
+    }
+    @keyframes twinkle {
+      0%, 100% { opacity: var(--min-op, 0.2); transform: scale(1); }
+      50% { opacity: var(--max-op, 0.8); transform: scale(1.3); }
+    }
+
+    /* ── 流星 ── */
+    .meteor {
+      position: absolute;
+      width: 2px;
+      height: 60px;
+      background: linear-gradient(to bottom, transparent, var(--gold-light), transparent);
+      border-radius: 2px;
+      animation: meteor-fall 1.2s ease-in forwards;
+      transform-origin: top center;
+    }
+    @keyframes meteor-fall {
+      0% { opacity: 1; transform: translateY(-20px) rotate(35deg); }
+      100% { opacity: 0; transform: translateY(300px) rotate(35deg); }
+    }
+
+    /* ── 主容器 ── */
+    #app {
+      position: relative; z-index: 1;
+      height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px 20px;
+    }
+
+    /* ── 屏幕切换 ── */
+    .screen {
+      display: none;
+      width: 100%; max-width: 420px;
+      animation: fadeSlideUp 0.5s ease forwards;
+    }
+    .screen.active { display: flex; flex-direction: column; }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── 欢迎屏 ── */
+    #screen-welcome {
+      align-items: center; text-align: center; gap: 0;
+    }
+
+    .orb {
+      width: 88px; height: 88px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, var(--accent-light), var(--accent), #4a3d70);
+      box-shadow: 0 0 40px var(--glow), 0 0 80px rgba(123,111,160,0.15);
+      margin-bottom: 28px;
+      position: relative;
+      animation: orb-pulse 4s ease-in-out infinite;
+    }
+    .orb::after {
+      content: '';
+      position: absolute; inset: -4px;
+      border-radius: 50%;
+      border: 1px solid rgba(201,168,76,0.3);
+      animation: orb-ring 4s ease-in-out infinite;
+    }
+    @keyframes orb-pulse {
+      0%, 100% { box-shadow: 0 0 40px var(--glow), 0 0 80px rgba(123,111,160,0.15); }
+      50% { box-shadow: 0 0 60px var(--glow), 0 0 120px rgba(123,111,160,0.2); }
+    }
+    @keyframes orb-ring {
+      0%, 100% { transform: scale(1); opacity: 0.4; }
+      50% { transform: scale(1.08); opacity: 0.8; }
+    }
+
+    .welcome-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 28px; font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--paper);
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    .welcome-subtitle {
+      font-size: 14px; color: var(--ink-muted);
+      line-height: 1.8; letter-spacing: 0.04em;
+      margin-bottom: 48px;
+      max-width: 280px;
+    }
+
+    .divider {
+      width: 40px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      margin: 0 auto 24px;
+    }
+
+    /* ── 按钮 ── */
+    .btn-primary {
+      width: 100%; padding: 16px 24px; min-height: 54px;
+      border: none; border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), #5a4d80);
+      color: var(--paper); font-family: 'Noto Sans SC', sans-serif;
+      font-size: 16px; font-weight: 500; letter-spacing: 0.06em;
+      text-indent: 0.06em; line-height: 1.5;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(123,111,160,0.4);
+      transition: transform var(--transition), box-shadow var(--transition);
+      position: relative; overflow: hidden;
+    }
+    .btn-primary::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:hover::before { opacity: 1; }
+
+    .btn-ghost {
+      background: transparent; border: 1px solid rgba(255,255,255,0.15);
+      color: var(--ink-muted); font-size: 14px;
+      padding: 12px; border-radius: 10px;
+      cursor: pointer; font-family: 'Noto Sans SC', sans-serif;
+      transition: all 0.3s; margin-top: 12px; width: 100%;
+    }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.3); color: var(--paper); }
+
+    /* ── 问卷屏 ── */
+    #screen-question {
+      gap: 0;
+    }
+
+    .q-back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: none;
+      color: var(--ink-muted); font-size: 13px;
+      cursor: pointer; padding: 0 0 20px 0;
+      transition: color 0.2s;
+      opacity: 0; pointer-events: none;
+      align-self: flex-start;
+    }
+    .q-back-btn.visible { opacity: 1; pointer-events: auto; }
+    .q-back-btn:hover { color: var(--accent-light); }
+    .q-back-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    .progress-bar-wrap {
+      width: 100%; height: 3px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px; overflow: hidden;
+      margin-bottom: 32px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--gold));
+      border-radius: 2px;
+      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .q-meta {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 16px;
+    }
+    .q-age-badge {
+      display: inline-flex; align-items: center;
+      padding: 4px 10px; border-radius: 20px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(201,168,76,0.3);
+      font-size: 11px; color: var(--gold);
+      letter-spacing: 0.05em; font-weight: 500;
+    }
+    .q-num {
+      font-size: 12px; color: var(--ink-muted);
+      margin-left: auto;
+    }
+
+    .q-text {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 20px; font-weight: 600;
+      line-height: 1.6; letter-spacing: 0.03em;
+      color: var(--paper);
+      margin-bottom: 8px;
+      min-height: 80px;
+    }
+
+    .q-scene {
+      font-size: 13px; color: var(--ink-muted);
+      line-height: 1.7; margin-bottom: 28px;
+      font-style: italic;
+    }
+
+    .options-list {
+      display: flex; flex-direction: column; gap: 10px;
+      margin-bottom: 0;
+    }
+
+    .option-btn {
+      width: 100%; padding: 14px 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+      color: var(--paper); font-family: 'Noto Sans SC', sans-serif;
+      font-size: 14px; line-height: 1.5; text-align: left;
+      cursor: pointer;
+      transition: all 0.25s;
+      position: relative; overflow: hidden;
+    }
+    .option-btn::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--accent);
+      opacity: 0; transition: opacity 0.25s;
+      border-radius: 3px 0 0 3px;
+    }
+    .option-btn:active { transform: scale(0.98); }
+    .option-btn:hover, .option-btn.selected {
+      border-color: rgba(123,111,160,0.5);
+      background: rgba(123,111,160,0.12);
+    }
+    .option-btn.selected::before { opacity: 1; }
+    .option-btn.selected { border-color: var(--accent); }
+
+    /* ── 加载屏 ── */
+    #screen-loading {
+      align-items: center; text-align: center; gap: 0;
+    }
+
+    .loading-orb {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, var(--gold-light), var(--gold), #a07a20);
+      box-shadow: 0 0 40px rgba(201,168,76,0.4);
+      margin-bottom: 24px;
+      animation: loading-spin 2s linear infinite;
+      position: relative;
+    }
+    .loading-orb::after {
+      content: '';
+      position: absolute; inset: -8px;
+      border-radius: 50%;
+      border: 1px dashed rgba(201,168,76,0.3);
+      animation: loading-spin-reverse 3s linear infinite;
+    }
+    @keyframes loading-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes loading-spin-reverse {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(-360deg); }
+    }
+
+    .loading-text {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 18px; color: var(--paper);
+      margin-bottom: 8px;
+    }
+    .loading-sub {
+      font-size: 13px; color: var(--ink-muted);
+      animation: loading-dots 1.5s steps(3, end) infinite;
+    }
+    @keyframes loading-dots {
+      0%   { content: '正在推演'; }
+      33%  { content: '正在推演·'; }
+      66%  { content: '正在推演··'; }
+      100% { content: '正在推演···'; }
+    }
+
+    /* ── 结果屏 ── */
+    #screen-result {
+      gap: 0;
+      overflow-y: auto;
+      max-height: calc(100vh - 48px);
+      padding-bottom: 80px;
+      scrollbar-width: none;
+    }
+    #screen-result::-webkit-scrollbar { display: none; }
+
+    .result-header {
+      text-align: center; margin-bottom: 28px;
+    }
+
+    .result-label {
+      display: inline-block;
+      padding: 6px 20px;
+      border-radius: 30px;
+      background: linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.1));
+      border: 1px solid rgba(201,168,76,0.4);
+      font-size: 11px; color: var(--gold);
+      letter-spacing: 0.15em; font-weight: 500;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+    }
+
+    .result-tag {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 36px; font-weight: 700;
+      letter-spacing: 0.05em;
+      background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--accent-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      line-height: 1.2;
+    }
+
+    .result-subtitle {
+      font-size: 13px; color: var(--ink-muted);
+      letter-spacing: 0.06em;
+    }
+
+    .result-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+
+    .result-card-title {
+      font-size: 11px; color: var(--gold);
+      letter-spacing: 0.12em; font-weight: 500;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .result-card-text {
+      font-size: 14px; color: rgba(255,255,255,0.85);
+      line-height: 1.9; letter-spacing: 0.02em;
+    }
+
+    .timeline-list {
+      list-style: none;
+      display: flex; flex-direction: column; gap: 0;
+    }
+
+    .timeline-item {
+      display: flex; gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      position: relative;
+    }
+    .timeline-item:last-child { border-bottom: none; }
+
+    .timeline-age {
+      flex-shrink: 0;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(123,111,160,0.15);
+      border: 1px solid rgba(123,111,160,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; color: var(--accent-light);
+      font-weight: 500;
+    }
+
+    .timeline-content { flex: 1; }
+    .timeline-event {
+      font-size: 13px; color: rgba(255,255,255,0.8);
+      line-height: 1.7;
+    }
+    .timeline-event em {
+      color: var(--gold); font-style: normal;
+    }
+
+    .traits-wrap {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .trait-chip {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.7);
+    }
+    .trait-chip.highlight {
+      background: rgba(123,111,160,0.15);
+      border-color: rgba(123,111,160,0.35);
+      color: var(--accent-light);
+    }
+
+    /* ── 工具 ── */
+    .mt-16 { margin-top: 16px; }
+    .mt-24 { margin-top: 24px; }
+
+    /* ── 滚动提示 ── */
+    .scroll-hint {
+      text-align: center; font-size: 12px;
+      color: var(--ink-muted); margin-top: 16px;
+      animation: bounce 2s ease-in-out infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(4px); }
+    }
+
+    /* ── 分享按钮 ── */
+    .btn-share {
+      width: 100%; padding: 14px 24px; min-height: 50px;
+      border: 1.5px solid rgba(201,168,76,0.5); border-radius: 12px;
+      background: rgba(201,168,76,0.08);
+      color: var(--gold-light); font-family: 'Noto Sans SC', sans-serif;
+      font-size: 15px; font-weight: 500; letter-spacing: 0.06em;
+      text-indent: 0.06em; line-height: 1.5;
+      cursor: pointer; margin-top: 12px;
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .btn-share:active { background: rgba(201,168,76,0.15); }
+
+    /* ── 分享 Modal ── */
+    #share-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.78);
+      align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #share-modal.open { display: flex; }
+    .share-modal-inner {
+      width: 100%; max-width: 380px;
+      background: #1a1a2e;
+      border-radius: 20px;
+      padding: 20px;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 14px;
+    }
+    .share-modal-title {
+      font-size: 14px; color: var(--ink-muted); text-align: center;
+    }
+    #share-preview {
+      width: 100%; border-radius: 12px;
+      display: block;
+    }
+    .share-modal-hint {
+      font-size: 12px; color: var(--ink-muted); text-align: center;
+      line-height: 1.6;
+    }
+    .share-modal-close {
+      width: 100%; padding: 12px; border: none; border-radius: 10px;
+      background: rgba(255,255,255,0.08); color: var(--paper);
+      font-size: 14px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<div id="app">
+
+  <!-- 欢迎屏 -->
+  <div id="screen-welcome" class="screen active">
+    <div class="orb"></div>
+    <h1 class="welcome-title">时光穿梭机</h1>
+    <div class="divider"></div>
+    <p class="welcome-subtitle">
+      十个问题，跨越你的一生<br>
+      从懵懂少年到暮年回望<br>
+      看见命运为你安排的样子
+    </p>
+    <button class="btn-primary" onclick="startJourney()">开始我的旅程</button>
+    <button class="btn-ghost" onclick="showAbout()">这是什么？</button>
+  </div>
+
+  <!-- 问卷屏 -->
+  <div id="screen-question" class="screen">
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <button class="q-back-btn" id="q-back-btn" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      上一题
+    </button>
+    <div class="q-meta">
+      <span class="q-age-badge" id="q-age-badge">童年</span>
+      <span class="q-num" id="q-num">1 / 10</span>
+    </div>
+    <p class="q-text" id="q-text"></p>
+    <p class="q-scene" id="q-scene"></p>
+    <div class="options-list" id="options-list"></div>
+  </div>
+
+  <!-- 加载屏 -->
+  <div id="screen-loading" class="screen">
+    <div class="loading-orb"></div>
+    <p class="loading-text">正在窥探你的人生</p>
+    <p class="loading-sub" id="loading-sub">正在推演</p>
+  </div>
+
+  <!-- 结果屏 -->
+  <div id="screen-result" class="screen">
+    <div class="result-header">
+      <div class="result-label">你的人生标签</div>
+      <div class="result-tag" id="result-tag"></div>
+      <div class="result-subtitle" id="result-subtitle"></div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-title">命运预言</div>
+      <div class="result-card-text" id="result-prophecy"></div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-title">人生轨迹</div>
+      <ul class="timeline-list" id="result-timeline"></ul>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-title">性格特质</div>
+      <div class="traits-wrap" id="result-traits"></div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-title">70 岁时的你</div>
+      <div class="result-card-text" id="result-old-age"></div>
+    </div>
+
+    <button class="btn-primary mt-24" onclick="restart()">再穿梭一次</button>
+    <button class="btn-share" onclick="openShareModal()">✦ 生成分享图片</button>
+    <div class="scroll-hint">↓ 向下滑动查看完整预言</div>
+  </div>
+
+</div>
+
+<!-- 分享图 Modal -->
+<div id="share-modal">
+  <div class="share-modal-inner">
+    <div class="share-modal-title">长按图片保存，分享到朋友圈</div>
+    <img id="share-preview" src="" alt="分享图片" />
+    <div class="share-modal-hint">iOS：长按图片 → 存储到相册<br>Android：长按图片 → 下载图片</div>
+    <button class="share-modal-close" onclick="closeShareModal()">关闭</button>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+//  星空
+// ─────────────────────────────────────────
+(function initStars() {
+  const canvas = document.getElementById('starfield');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  let W, H;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function createStars() {
+    stars = [];
+    const count = Math.floor((W * H) / 4000);
+    for (let i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.5 + 0.3,
+        op: Math.random(),
+        speed: Math.random() * 0.008 + 0.003,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    frame += 0.01;
+    stars.forEach(s => {
+      const op = 0.2 + 0.6 * (0.5 + 0.5 * Math.sin(frame * s.speed * 100 + s.phase));
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(220,215,240,${op})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  resize(); createStars(); draw();
+  window.addEventListener('resize', () => { resize(); createStars(); });
+
+  // 偶尔产生流星
+  function spawnMeteor() {
+    const m = document.createElement('div');
+    m.className = 'meteor';
+    m.style.left = Math.random() * 80 + 10 + '%';
+    m.style.top = Math.random() * 40 + '%';
+    document.body.appendChild(m);
+    setTimeout(() => m.remove(), 1400);
+  }
+  setInterval(() => { if (Math.random() < 0.4) spawnMeteor(); }, 3000);
+})();
+
+// ─────────────────────────────────────────
+//  题库（50 道，每次随机抽 10）
+// ─────────────────────────────────────────
+const QUESTION_BANK = [
+  // ── 童年 ──
+  {
+    age: '童年 · 7岁', ageGroup: 'child',
+    text: '放学路上，你捡到了一枚金光闪闪的硬币。你会？',
+    scene: '夕阳把影子拉得很长，同学们已经走远了。',
+    options: [
+      { text: '交给老师，心里踏实', weights: { stable: 2, moral: 3, social: 1 } },
+      { text: '留着，买一根冰棒', weights: { pleasure: 2, practical: 2, solo: 1 } },
+      { text: '找到失主还回去', weights: { empathy: 3, moral: 2, social: 2 } },
+      { text: '存起来，攒钱买喜欢的书', weights: { intellectual: 3, future: 2, solo: 1 } }
+    ]
+  },
+  {
+    age: '童年 · 8岁', ageGroup: 'child',
+    text: '下雨天，你最喜欢做什么？',
+    scene: '窗外哗哗下着大雨，今天不用上学。',
+    options: [
+      { text: '趴在窗台上看雨，发呆', weights: { introvert: 2, creative: 2, sensitive: 2 } },
+      { text: '拉着小伙伴踩水坑', weights: { social: 3, adventure: 2, pleasure: 1 } },
+      { text: '看书或画画', weights: { intellectual: 3, solo: 2, creative: 2 } },
+      { text: '帮妈妈做家务', weights: { family: 3, moral: 2, practical: 1 } }
+    ]
+  },
+  {
+    age: '童年 · 10岁', ageGroup: 'child',
+    text: '学校要排演话剧，你会争取哪个角色？',
+    scene: '老师说可以自己报名，一共有四个角色。',
+    options: [
+      { text: '主角，站在最中间', weights: { ambition: 3, social: 2, career: 1 } },
+      { text: '幕后编剧或导演', weights: { intellectual: 3, creative: 3, solo: 1 } },
+      { text: '配角也好，能参与就行', weights: { stable: 2, social: 2, empathy: 1 } },
+      { text: '负责道具和布景', weights: { practical: 3, solo: 2, creative: 1 } }
+    ]
+  },
+  {
+    age: '童年 · 11岁', ageGroup: 'child',
+    text: '你的好朋友做了一件让你不舒服的事。你会？',
+    scene: '在所有同学面前，他取笑了你。',
+    options: [
+      { text: '当场反驳，维护自己', weights: { ambition: 2, solo: 1, moral: 2 } },
+      { text: '私下和他谈清楚', weights: { empathy: 3, social: 3, stable: 1 } },
+      { text: '默默消化，假装没事', weights: { introvert: 2, sensitive: 3, stable: 1 } },
+      { text: '疏远他，换新朋友', weights: { solo: 2, practical: 2, adventure: 1 } }
+    ]
+  },
+
+  // ── 青少年 ──
+  {
+    age: '少年 · 14岁', ageGroup: 'teen',
+    text: '中考前夕，你的复习方法是？',
+    scene: '距离考试还有两周，同学们都在疯狂刷题。',
+    options: [
+      { text: '制定严格计划，逐条执行', weights: { stable: 2, career: 2, ambition: 2 } },
+      { text: '跟着感觉走，喜欢哪科补哪科', weights: { creative: 2, pleasure: 1, sensitive: 1 } },
+      { text: '组织同学互相讲题', weights: { social: 3, empathy: 2, career: 1 } },
+      { text: '减少刷题，多睡觉保持状态', weights: { practical: 3, stable: 2, future: 1 } }
+    ]
+  },
+  {
+    age: '少年 · 15岁', ageGroup: 'teen',
+    text: '你暗恋上了班里一个人，你会怎么做？',
+    scene: '每次路过都心跳加速，不知道对方注意到你没有。',
+    options: [
+      { text: '主动搭话，试探一下', weights: { social: 3, adventure: 2, ambition: 1 } },
+      { text: '写进日记，珍藏在心里', weights: { introvert: 3, sensitive: 3, creative: 1 } },
+      { text: '托朋友打听对方的情况', weights: { social: 2, practical: 2, stable: 1 } },
+      { text: '全力备考，等以后再说', weights: { career: 3, ambition: 2, future: 2 } }
+    ]
+  },
+  {
+    age: '少年 · 16岁', ageGroup: 'teen',
+    text: '周末有一个兼职机会，时薪不错，但要占用你打球/追剧的时间。你会？',
+    scene: '朋友说这是攒零花钱的好机会，但也说太累了。',
+    options: [
+      { text: '去，早点体验赚钱的感觉', weights: { career: 3, practical: 2, ambition: 2 } },
+      { text: '不去，好好享受少年时光', weights: { pleasure: 3, future: -1, sensitive: 1 } },
+      { text: '去几次，累了就停', weights: { stable: 2, practical: 2, pleasure: 1 } },
+      { text: '找更有意义的志愿活动代替', weights: { moral: 3, social: 2, intellectual: 2 } }
+    ]
+  },
+  {
+    age: '少年 · 17岁', ageGroup: 'teen',
+    text: '高考志愿，你最想填的方向是？',
+    scene: '老师让每人写下自己的第一志愿方向。',
+    options: [
+      { text: '热门专业，好就业', weights: { practical: 3, stable: 3, career: 2 } },
+      { text: '跟着兴趣走，哪怕冷门', weights: { intellectual: 3, creative: 3, adventure: 2 } },
+      { text: '离家近、父母推荐的', weights: { family: 3, stable: 2, moral: 1 } },
+      { text: '出国，见见更大的世界', weights: { adventure: 4, solo: 2, future: 2 } }
+    ]
+  },
+
+  // ── 青年 ──
+  {
+    age: '青年 · 22岁', ageGroup: 'young',
+    text: '毕业典礼结束，你做的第一件事是？',
+    scene: '毕业帽扔上天空，四年就此落幕。',
+    options: [
+      { text: '赶紧投简历，找到工作再说', weights: { career: 3, practical: 3, stable: 1 } },
+      { text: '来一场说走就走的旅行', weights: { adventure: 4, pleasure: 2, future: 1 } },
+      { text: '和恋人好好庆祝', weights: { family: 2, social: 3, empathy: 2 } },
+      { text: '一个人回家陪父母', weights: { family: 4, moral: 2, stable: 2 } }
+    ]
+  },
+  {
+    age: '青年 · 24岁', ageGroup: 'young',
+    text: '第一份工作你更看重什么？',
+    scene: '同时拿到两个 offer，一个钱多一个前景好。',
+    options: [
+      { text: '薪资，活下去是第一位', weights: { practical: 3, stable: 3, career: 1 } },
+      { text: '成长空间，哪怕先少赚', weights: { ambition: 3, future: 3, career: 2 } },
+      { text: '公司氛围，和同事合得来', weights: { social: 4, empathy: 2, pleasure: 1 } },
+      { text: '自由度，不想被管太死', weights: { creative: 3, solo: 3, adventure: 2 } }
+    ]
+  },
+  {
+    age: '青年 · 26岁', ageGroup: 'young',
+    text: '家里催婚，你的态度是？',
+    scene: '七大姑八大姨轮番轰炸，"都这个年纪了"。',
+    options: [
+      { text: '顺着来，认真相亲', weights: { family: 3, stable: 2, moral: 1 } },
+      { text: '我的人生我做主，不急', weights: { solo: 3, adventure: 2, ambition: 2 } },
+      { text: '已经在谈了，等合适时候', weights: { social: 2, stable: 3, family: 2 } },
+      { text: '把精力放在事业上，感情顺其自然', weights: { career: 4, ambition: 3, future: 2 } }
+    ]
+  },
+  {
+    age: '青年 · 28岁', ageGroup: 'young',
+    text: '有机会去大城市闯荡，但要离开家乡。你会？',
+    scene: '猎头打来电话，薪资翻倍，但要去陌生的城市。',
+    options: [
+      { text: '去，机会难得', weights: { adventure: 4, career: 3, ambition: 3 } },
+      { text: '不去，根在这里', weights: { family: 4, stable: 3, moral: 1 } },
+      { text: '先谈谈条件，再做决定', weights: { practical: 4, stable: 2, career: 2 } },
+      { text: '和家人商量后决定', weights: { family: 3, empathy: 3, moral: 2 } }
+    ]
+  },
+
+  // ── 中年 ──
+  {
+    age: '中年 · 32岁', ageGroup: 'middle',
+    text: '职场遇到了天花板，你会？',
+    scene: '同龄人升职了，你还在原地。',
+    options: [
+      { text: '跳槽，换个赛道重新开始', weights: { adventure: 3, ambition: 3, career: 2 } },
+      { text: '默默积累，等待机会', weights: { stable: 3, practical: 2, future: 2 } },
+      { text: '副业创收，开辟第二战场', weights: { creative: 3, ambition: 3, solo: 2 } },
+      { text: '降低预期，照顾好家庭更重要', weights: { family: 4, stable: 3, moral: 2 } }
+    ]
+  },
+  {
+    age: '中年 · 35岁', ageGroup: 'middle',
+    text: '有机会创业，但要投入全部积蓄。你会？',
+    scene: '一个朋友找到你，说发现了一个好项目，需要合伙人。',
+    options: [
+      { text: '全力以赴，人生就赌这一次', weights: { adventure: 4, ambition: 4, future: 2 } },
+      { text: '投小部分试试水', weights: { practical: 4, stable: 2, ambition: 2 } },
+      { text: '拒绝，太冒险了', weights: { stable: 4, family: 2, practical: 2 } },
+      { text: '深入调研再说', weights: { intellectual: 3, practical: 3, future: 2 } }
+    ]
+  },
+  {
+    age: '中年 · 38岁', ageGroup: 'middle',
+    text: '孩子的教育问题上，你更倾向于？',
+    scene: '孩子不爱学习，但很有艺术天赋。',
+    options: [
+      { text: '以成绩为主，艺术兴趣业余发展', weights: { stable: 3, practical: 3, family: 2 } },
+      { text: '支持孩子走艺术这条路', weights: { creative: 3, empathy: 4, adventure: 2 } },
+      { text: '让孩子自己决定', weights: { solo: 2, empathy: 3, moral: 2 } },
+      { text: '请专业老师综合评估', weights: { intellectual: 3, practical: 3, family: 2 } }
+    ]
+  },
+  {
+    age: '中年 · 42岁', ageGroup: 'middle',
+    text: '父母年迈需要照料，你怎么安排？',
+    scene: '父母身体大不如前，你又是独生子。',
+    options: [
+      { text: '接到身边，亲自照顾', weights: { family: 4, moral: 4, stable: 2 } },
+      { text: '请专业护工，你负责费用', weights: { practical: 4, career: 2, moral: 2 } },
+      { text: '轮流照顾，和兄弟姐妹分担', weights: { social: 3, family: 3, empathy: 2 } },
+      { text: '住好的养老院，定期探望', weights: { practical: 3, stable: 2, future: 2 } }
+    ]
+  },
+
+  // ── 中老年 ──
+  {
+    age: '中老年 · 48岁', ageGroup: 'senior',
+    text: '人到中年，你对"成功"的理解变成了？',
+    scene: '老同学聚会，大家各有各的样子。',
+    options: [
+      { text: '财富自由，随时可以退休', weights: { practical: 3, future: 3, solo: 2 } },
+      { text: '家庭幸福，孩子健康懂事', weights: { family: 4, moral: 3, stable: 2 } },
+      { text: '做自己想做的事，不后悔', weights: { creative: 3, adventure: 3, pleasure: 2 } },
+      { text: '被人尊重，有所成就', weights: { ambition: 3, career: 3, social: 2 } }
+    ]
+  },
+  {
+    age: '中老年 · 52岁', ageGroup: 'senior',
+    text: '身体发出了预警信号，你会？',
+    scene: '体检报告出来，有几项指标偏高。',
+    options: [
+      { text: '立刻调整作息，认真对待', weights: { practical: 3, stable: 3, future: 3 } },
+      { text: '先忙完手头的事再说', weights: { career: 2, ambition: 2, future: -2 } },
+      { text: '复查一次再说，说不定是误差', weights: { stable: 2, practical: 1, solo: 1 } },
+      { text: '和医生详细聊聊，制定计划', weights: { intellectual: 3, practical: 3, future: 2 } }
+    ]
+  },
+  {
+    age: '中老年 · 55岁', ageGroup: 'senior',
+    text: '有机会去支教一年，你会去吗？',
+    scene: '公司有志愿者项目，去偏远山区教书一年。',
+    options: [
+      { text: '去，这是一生难忘的经历', weights: { moral: 4, adventure: 3, empathy: 3 } },
+      { text: '不去，家庭需要我', weights: { family: 3, stable: 3, practical: 2 } },
+      { text: '去短期的，两三周可以', weights: { moral: 2, practical: 3, stable: 2 } },
+      { text: '捐款支持，但不亲自去', weights: { practical: 2, moral: 2, solo: 2 } }
+    ]
+  },
+  {
+    age: '退休前 · 60岁', ageGroup: 'elder',
+    text: '孩子要去异国定居，你怎么看？',
+    scene: '孩子拿到了海外工作签证，兴奋地跑来告诉你。',
+    options: [
+      { text: '全力支持，孩子有出息', weights: { family: 3, empathy: 4, adventure: 2 } },
+      { text: '担心，但不阻拦', weights: { family: 3, empathy: 3, stable: 2 } },
+      { text: '希望留在身边，委婉表达', weights: { family: 4, stable: 3, moral: 1 } },
+      { text: '约定常回家看看，然后祝福', weights: { empathy: 4, moral: 3, social: 2 } }
+    ]
+  },
+  {
+    age: '退休 · 65岁', ageGroup: 'elder',
+    text: '退休了，你最想做的第一件事是？',
+    scene: '最后一天上班，同事们送了蛋糕，明天就自由了。',
+    options: [
+      { text: '环游全国，把没去过的地方走一遍', weights: { adventure: 4, pleasure: 3, solo: 2 } },
+      { text: '在家含饴弄孙，享受天伦之乐', weights: { family: 4, stable: 3, pleasure: 2 } },
+      { text: '学一门手艺，做年轻时没做的事', weights: { creative: 4, intellectual: 3, pleasure: 2 } },
+      { text: '找份轻松的事情做，不能太闲', weights: { career: 2, stable: 3, practical: 2 } }
+    ]
+  },
+
+  // ── 童年（扩充）──
+  {
+    age: '童年 · 6岁', ageGroup: 'child',
+    text: '幼儿园排练节目，老师问谁想站第一排。你会？',
+    scene: '小朋友们你看我我看你，教室里安静了一秒。',
+    options: [
+      { text: '第一个举手，我要站中间', weights: { ambition: 3, social: 3, adventure: 1 } },
+      { text: '想举又不敢，偷偷看别人', weights: { introvert: 2, sensitive: 3, stable: 1 } },
+      { text: '推荐好朋友上去', weights: { empathy: 3, moral: 2, social: 2 } },
+      { text: '无所谓，后排也行', weights: { stable: 2, solo: 2, practical: 1 } }
+    ]
+  },
+  {
+    age: '童年 · 9岁', ageGroup: 'child',
+    text: '你的好朋友不小心打破了花瓶，老师问是谁干的。你会？',
+    scene: '朋友吓得脸都白了，悄悄拉了拉你的衣角。',
+    options: [
+      { text: '帮他说不是他干的', weights: { social: 3, empathy: 3, moral: -1 } },
+      { text: '让他自己站出来承认', weights: { moral: 4, stable: 2, social: 1 } },
+      { text: '一起站出来说是两个人干的', weights: { empathy: 3, moral: 2, social: 3 } },
+      { text: '沉默，不说话', weights: { introvert: 2, stable: 1, sensitive: 2 } }
+    ]
+  },
+  {
+    age: '童年 · 10岁', ageGroup: 'child',
+    text: '暑假，爸妈给你报了三个兴趣班。你最想学哪个？',
+    scene: '报名册摊在桌上，你有点犯难。',
+    options: [
+      { text: '画画，安静地创作', weights: { creative: 3, solo: 2, intellectual: 1 } },
+      { text: '武术，强身健体', weights: { adventure: 2, practical: 3, stable: 1 } },
+      { text: '音乐，弹钢琴或唱歌', weights: { creative: 3, sensitive: 2, intellectual: 2 } },
+      { text: '编程，感觉很酷', weights: { intellectual: 4, practical: 2, future: 2 } }
+    ]
+  },
+  {
+    age: '童年 · 11岁', ageGroup: 'child',
+    text: '班级投票选班长，你获得了最多票。你会？',
+    scene: '同学们都看着你，老师微笑着等你表态。',
+    options: [
+      { text: '接受，我会做好的', weights: { ambition: 3, social: 3, career: 2 } },
+      { text: '谢谢，但我想推荐更合适的人', weights: { empathy: 3, moral: 3, stable: 1 } },
+      { text: '有点紧张，但还是答应了', weights: { sensitive: 2, social: 2, stable: 2 } },
+      { text: '拒绝，不想有那么多事', weights: { introvert: 3, solo: 2, practical: 1 } }
+    ]
+  },
+  {
+    age: '童年 · 12岁', ageGroup: 'child',
+    text: '期末考试成绩出来了，你比上次退步了10分。你会？',
+    scene: '成绩单夹在书包里，回家的路感觉特别漫长。',
+    options: [
+      { text: '主动告诉爸妈，请他们帮忙分析', weights: { moral: 3, family: 3, future: 2 } },
+      { text: '藏起来，想自己想办法追回来', weights: { solo: 3, ambition: 2, introvert: 2 } },
+      { text: '先哭一场，哭完再想怎么办', weights: { sensitive: 3, stable: 1, empathy: 1 } },
+      { text: '没什么，下次考好就行', weights: { practical: 3, stable: 2, pleasure: 1 } }
+    ]
+  },
+
+  // ── 少年（扩充）──
+  {
+    age: '少年 · 13岁', ageGroup: 'teen',
+    text: '初中第一天，你在宿舍认识了一个性格很不一样的室友。你会？',
+    scene: '铺盖刚铺好，对面床的同学正盯着你看。',
+    options: [
+      { text: '主动打招呼，先聊起来', weights: { social: 4, adventure: 2, empathy: 2 } },
+      { text: '等他先说话', weights: { introvert: 3, stable: 2, sensitive: 1 } },
+      { text: '专注整理自己的东西，顺其自然', weights: { solo: 3, practical: 2, stable: 1 } },
+      { text: '问他喜欢什么，找共同话题', weights: { social: 3, intellectual: 2, empathy: 3 } }
+    ]
+  },
+  {
+    age: '少年 · 15岁', ageGroup: 'teen',
+    text: '你发现班里最受欢迎的同学在背后说你坏话。你会？',
+    scene: '这话辗转传到了你耳朵里，心里堵得慌。',
+    options: [
+      { text: '当面质问他为什么', weights: { ambition: 2, moral: 3, social: 2 } },
+      { text: '写进日记，自己消化', weights: { introvert: 3, sensitive: 3, creative: 1 } },
+      { text: '找共同朋友调解', weights: { social: 3, empathy: 3, stable: 2 } },
+      { text: '不在意，疏远就好', weights: { solo: 3, practical: 3, stable: 1 } }
+    ]
+  },
+  {
+    age: '少年 · 16岁', ageGroup: 'teen',
+    text: '老师让你代表学校参加市里的演讲比赛，你完全没准备过。你会？',
+    scene: '距离比赛只有两周，你站在讲台前有些发抖。',
+    options: [
+      { text: '全力备战，不管结果', weights: { ambition: 4, career: 2, future: 2 } },
+      { text: '认真准备，但保持平常心', weights: { stable: 3, practical: 3, intellectual: 2 } },
+      { text: '婉拒，推荐更擅长的同学', weights: { empathy: 3, moral: 2, introvert: 2 } },
+      { text: '答应了，但上台前一直在想放弃', weights: { sensitive: 3, stable: 1, social: 1 } }
+    ]
+  },
+  {
+    age: '少年 · 17岁', ageGroup: 'teen',
+    text: '高中要选文理科了，你的兴趣和父母的期望刚好相反。你会？',
+    scene: '饭桌上气氛有点凝固，爸妈的眼神都看着你。',
+    options: [
+      { text: '按自己的兴趣选，和父母说清楚', weights: { solo: 3, intellectual: 3, adventure: 2 } },
+      { text: '顺着父母的意思来', weights: { family: 4, stable: 3, moral: 1 } },
+      { text: '和父母深谈，找到折中方案', weights: { empathy: 3, social: 3, family: 2 } },
+      { text: '拖着不决定，让老师帮忙劝说', weights: { sensitive: 2, stable: 1, practical: 1 } }
+    ]
+  },
+  {
+    age: '少年 · 18岁', ageGroup: 'teen',
+    text: '高考前夜，你把书本都合上了。你在想什么？',
+    scene: '台灯照着空白的天花板，宿舍里只剩呼吸声。',
+    options: [
+      { text: '脑子里过了一遍所有知识点', weights: { intellectual: 3, stable: 3, future: 2 } },
+      { text: '想到了很多人，家人，朋友', weights: { family: 3, empathy: 3, social: 2 } },
+      { text: '什么都没想，很平静', weights: { stable: 4, practical: 2, solo: 2 } },
+      { text: '想着考完要去哪里玩', weights: { pleasure: 3, adventure: 2, practical: 1 } }
+    ]
+  },
+
+  // ── 青年（扩充）──
+  {
+    age: '青年 · 21岁', ageGroup: 'young',
+    text: '大学里，你加入了一个创业小团队，但方向你不太认可。你会？',
+    scene: '团队第一次开会，大家都很兴奋，只有你有些迟疑。',
+    options: [
+      { text: '直说自己的看法，提出调整建议', weights: { intellectual: 3, ambition: 3, social: 2 } },
+      { text: '先跟着做，看看结果', weights: { stable: 3, practical: 2, future: 1 } },
+      { text: '私下和负责人谈谈', weights: { empathy: 3, social: 3, moral: 1 } },
+      { text: '退出，找更合适的方向', weights: { solo: 3, adventure: 2, intellectual: 2 } }
+    ]
+  },
+  {
+    age: '青年 · 23岁', ageGroup: 'young',
+    text: '毕业了，一个机会摆在面前：薪资不错但工作很无聊，你会选吗？',
+    scene: 'offer letter发到了邮箱，截止日期是明天。',
+    options: [
+      { text: '接，先稳住再慢慢找机会', weights: { practical: 4, stable: 3, career: 1 } },
+      { text: '不接，无聊的工作会磨掉人', weights: { creative: 3, adventure: 3, ambition: 2 } },
+      { text: '接，同时偷偷投其他岗位', weights: { practical: 3, ambition: 2, future: 2 } },
+      { text: '谈谈，看能不能换岗位', weights: { social: 3, ambition: 2, intellectual: 2 } }
+    ]
+  },
+  {
+    age: '青年 · 25岁', ageGroup: 'young',
+    text: '你在城市租房，房东突然要涨房租30%。你会？',
+    scene: '微信通知在屏幕上亮着，金额有点刺眼。',
+    options: [
+      { text: '谈判，看能不能少涨点', weights: { practical: 4, social: 3, stable: 2 } },
+      { text: '直接搬走，换个地方', weights: { adventure: 3, solo: 2, practical: 2 } },
+      { text: '接受，不想折腾', weights: { stable: 3, pleasure: 1, practical: 2 } },
+      { text: '和朋友合租分摊', weights: { social: 4, practical: 3, empathy: 2 } }
+    ]
+  },
+  {
+    age: '青年 · 27岁', ageGroup: 'young',
+    text: '你交往了2年的恋人说想分手，原因是你们"三观不合"。你会？',
+    scene: '咖啡馆角落，杯子还是热的，话已经说完了。',
+    options: [
+      { text: '尊重对方的决定，好聚好散', weights: { moral: 3, empathy: 3, stable: 2 } },
+      { text: '争取一下，认真谈谈分歧', weights: { social: 3, empathy: 3, ambition: 1 } },
+      { text: '难过，但不纠缠', weights: { sensitive: 3, stable: 2, solo: 2 } },
+      { text: '接受，本来就觉得哪里不对', weights: { intellectual: 2, practical: 3, solo: 2 } }
+    ]
+  },
+  {
+    age: '青年 · 29岁', ageGroup: 'young',
+    text: '你的老朋友向你借了一大笔钱，但迟迟没有提还款的事。你会？',
+    scene: '又一起吃饭，他喝着酒，没有提起，你心里开始打鼓。',
+    options: [
+      { text: '直接问他打算什么时候还', weights: { practical: 4, moral: 3, social: 2 } },
+      { text: '委婉地提起，看他的反应', weights: { empathy: 3, social: 3, stable: 2 } },
+      { text: '当做没这回事，感情比钱重要', weights: { family: 2, empathy: 3, pleasure: 1 } },
+      { text: '心里记着，但减少往来', weights: { practical: 3, solo: 2, stable: 2 } }
+    ]
+  },
+
+  // ── 中年（扩充）──
+  {
+    age: '中年 · 33岁', ageGroup: 'middle',
+    text: '孩子刚出生，你和另一半都面临升职机会，但只能一人放弃。你会？',
+    scene: '医院走廊，你们对视了一下，都没先开口。',
+    options: [
+      { text: '我来牺牲，家庭更重要', weights: { family: 5, moral: 3, stable: 2 } },
+      { text: '让对方决定，各有各的职业规划', weights: { solo: 2, practical: 3, empathy: 2 } },
+      { text: '一起商量，找最优解', weights: { empathy: 4, social: 3, intellectual: 2 } },
+      { text: '两个人都争取，请外援帮带孩子', weights: { ambition: 3, career: 3, practical: 3 } }
+    ]
+  },
+  {
+    age: '中年 · 36岁', ageGroup: 'middle',
+    text: '公司突然宣布你被调去一个边缘部门，没有明说但意思很清楚。你会？',
+    scene: 'HR约谈后，你坐在工位上，周围人假装没看见。',
+    options: [
+      { text: '主动找领导谈，弄清楚原因', weights: { ambition: 3, social: 3, moral: 2 } },
+      { text: '接受调动，默默积累资本再跳', weights: { practical: 4, stable: 3, future: 3 } },
+      { text: '直接提离职，另起炉灶', weights: { adventure: 4, ambition: 3, solo: 2 } },
+      { text: '找律师，看看有没有违规', weights: { moral: 4, practical: 3, intellectual: 2 } }
+    ]
+  },
+  {
+    age: '中年 · 39岁', ageGroup: 'middle',
+    text: '中年危机悄悄来袭，你发现自己越来越不认识镜子里的自己。你会？',
+    scene: '洗手间的镜子，你盯着自己的眼睛看了很久。',
+    options: [
+      { text: '去旅行，换个环境重新想清楚', weights: { adventure: 4, pleasure: 3, creative: 2 } },
+      { text: '找朋友或心理咨询师聊聊', weights: { social: 3, empathy: 3, intellectual: 2 } },
+      { text: '开始健身，从身体找回状态', weights: { practical: 3, stable: 3, future: 2 } },
+      { text: '埋头工作，用忙来填满', weights: { career: 3, ambition: 2, stable: 1 } }
+    ]
+  },
+  {
+    age: '中年 · 41岁', ageGroup: 'middle',
+    text: '你的孩子迷上了游戏，成绩直线下滑。你会怎么处理？',
+    scene: '书房的灯亮着，你在门口犹豫要不要敲门进去。',
+    options: [
+      { text: '没收设备，严格管控', weights: { family: 3, stable: 2, moral: 2 } },
+      { text: '坐下来认真聊，理解他的想法', weights: { empathy: 4, social: 3, intellectual: 2 } },
+      { text: '约法三章，游戏和学习分开', weights: { practical: 4, stable: 3, family: 2 } },
+      { text: '找专业的青少年顾问帮忙', weights: { intellectual: 3, practical: 3, empathy: 2 } }
+    ]
+  },
+  {
+    age: '中年 · 44岁', ageGroup: 'middle',
+    text: '老同学聚会，你发现自己和大家的人生轨迹差异越来越大。你的感受是？',
+    scene: '包间里觥筹交错，你突然觉得有点格格不入。',
+    options: [
+      { text: '坦然，每个人的路不一样', weights: { stable: 4, moral: 2, solo: 2 } },
+      { text: '暗自较劲，回去更努力', weights: { ambition: 4, career: 3, future: 2 } },
+      { text: '有点羡慕，但也知道各有各的代价', weights: { intellectual: 3, empathy: 3, sensitive: 2 } },
+      { text: '不在意，活在当下更重要', weights: { pleasure: 3, stable: 2, practical: 2 } }
+    ]
+  },
+
+  // ── 中老年（扩充）──
+  {
+    age: '中老年 · 49岁', ageGroup: 'senior',
+    text: '你的父母开始频繁生病，而你的工作也到了最关键的阶段。你会？',
+    scene: '两个电话几乎同时打来，你手里只有一部手机。',
+    options: [
+      { text: '工作可以缓，先回去陪父母', weights: { family: 5, moral: 4, stable: 2 } },
+      { text: '请护工，做好经济保障', weights: { practical: 4, career: 3, moral: 2 } },
+      { text: '让兄弟姐妹先顶着，我尽快处理完工作', weights: { career: 3, practical: 3, family: 2 } },
+      { text: '两头跑，再累也要撑着', weights: { family: 4, ambition: 3, moral: 3 } }
+    ]
+  },
+  {
+    age: '中老年 · 51岁', ageGroup: 'senior',
+    text: '你有机会在行业里出一本书，但要花两年时间。你会写吗？',
+    scene: '出版社编辑递来一份合同，你翻到最后一页。',
+    options: [
+      { text: '写，这是留给世界的东西', weights: { intellectual: 5, creative: 4, future: 3 } },
+      { text: '想写，但先评估时间成本', weights: { practical: 4, intellectual: 3, stable: 2 } },
+      { text: '不写，精力应该放在家人身上', weights: { family: 4, moral: 3, stable: 2 } },
+      { text: '写，但希望找人合著', weights: { social: 3, intellectual: 3, practical: 3 } }
+    ]
+  },
+  {
+    age: '中老年 · 54岁', ageGroup: 'senior',
+    text: '你的身体开始出现一些小毛病，医生建议你改变生活方式。你会？',
+    scene: '诊室外的走廊，手里攥着一张检查单。',
+    options: [
+      { text: '立刻执行，健康第一', weights: { practical: 4, stable: 4, future: 3 } },
+      { text: '慢慢来，先减少一些坏习惯', weights: { stable: 3, practical: 2, pleasure: 2 } },
+      { text: '找最好的医生再细问一遍', weights: { intellectual: 4, practical: 3, future: 2 } },
+      { text: '不当回事，感觉还好', weights: { pleasure: 2, stable: 1, solo: 1 } }
+    ]
+  },
+
+  // ── 退休（扩充）──
+  {
+    age: '退休前 · 58岁', ageGroup: 'elder',
+    text: '距退休还有两年，你开始盘点这一生。你最想弥补的是什么？',
+    scene: '夜深了，翻着以前的老照片，思绪飘远了。',
+    options: [
+      { text: '陪伴家人的时间太少了', weights: { family: 5, empathy: 4, moral: 2 } },
+      { text: '有些事没勇气去做，留下了遗憾', weights: { adventure: 3, creative: 3, sensitive: 2 } },
+      { text: '对自己太苛刻，忘了好好享受', weights: { pleasure: 4, stable: 2, sensitive: 2 } },
+      { text: '没什么遗憾，活得很踏实', weights: { stable: 5, moral: 3, practical: 3 } }
+    ]
+  },
+  {
+    age: '退休 · 63岁', ageGroup: 'elder',
+    text: '老伴提议去做两年义工，支援偏远山区教育。你会？',
+    scene: '宣传册放在茶几上，窗外的阳光正好。',
+    options: [
+      { text: '太好了，一直想做这件事', weights: { moral: 5, adventure: 3, empathy: 4 } },
+      { text: '支持老伴去，我帮忙打理后方', weights: { family: 4, moral: 3, practical: 3 } },
+      { text: '去短期的，一两个月可以', weights: { moral: 3, practical: 3, stable: 2 } },
+      { text: '捐钱支持，不亲自去了', weights: { practical: 3, moral: 2, stable: 3 } }
+    ]
+  },
+  {
+    age: '退休 · 67岁', ageGroup: 'elder',
+    text: '孙辈问你："爷爷/奶奶，你这辈子最自豪的是什么？"你会说？',
+    scene: '小家伙睁着大眼睛看着你，等你回答。',
+    options: [
+      { text: '把你们一家人养大，平平安安', weights: { family: 5, moral: 4, stable: 3 } },
+      { text: '做了一件对很多人有意义的事', weights: { moral: 5, social: 3, ambition: 3 } },
+      { text: '走过很多地方，见过很多人', weights: { adventure: 4, pleasure: 3, intellectual: 3 } },
+      { text: '一直做自己想做的事，没后悔过', weights: { solo: 4, creative: 3, pleasure: 3 } }
+    ]
+  }
+];
+
+// ─────────────────────────────────────────
+//  人生剧本库（14 种结局）
+// ─────────────────────────────────────────
+const DESTINIES = [
+  {
+    tag: '山海追梦人',
+    subtitle: '风浪越大，鱼越贵',
+    prophecy: '你天生有一种不安分的魂魄，命运每次把你推向安稳，你总会偷偷绕开。你的人生是一部公路电影：风景不断变换，有狼狈，有辉煌，但从没有无聊。最终，你的名字会和某段了不起的故事绑在一起。',
+    timeline: [
+      { age: '25', event: '放弃稳定工作，做出第一次<em>勇敢的选择</em>' },
+      { age: '32', event: '经历一次重大失败，但从废墟里站起来，<em>更清醒</em>' },
+      { age: '41', event: '在某个意想不到的领域<em>找到真正的舞台</em>' },
+      { age: '58', event: '成为某些年轻人心里的<em>传奇名字</em>' }
+    ],
+    traits: ['冒险', '不服输', '直觉敏锐', '耐挫力强', '天生领导'],
+    highlight: [0, 4],
+    oldAge: '70岁的你，坐在某个你年轻时憧憬过的地方，阳光照在满是故事的脸上。你不会说"如果当年……"，因为你当年什么都做了。孙辈围在你身边，央求你再讲一个故事。',
+    scoreKey: 'adventure', threshold: 8
+  },
+  {
+    tag: '烟火守望者',
+    subtitle: '人间最美是平凡',
+    prophecy: '你的幸福学不来，也偷不走。别人在向往诗和远方，你早就活在了里面——那是厨房里热腾腾的饭，是傍晚一家人坐在一起看电视的声音。你的人生地图很小，却每一寸都是真实的温度。',
+    timeline: [
+      { age: '27', event: '在某个平凡的黄昏，遇见那个<em>对的人</em>' },
+      { age: '34', event: '建立起属于自己的<em>温暖的家</em>' },
+      { age: '46', event: '成为家族里所有人的<em>精神支柱</em>' },
+      { age: '62', event: '在平淡中发现，自己其实过了<em>一生中最幸运的人生</em>' }
+    ],
+    traits: ['踏实', '重感情', '有耐心', '值得信赖', '懂生活'],
+    highlight: [0, 2, 4],
+    oldAge: '70岁的你，院子里种着一排花，每天定时浇水。孩子们会带着孙子回来看你，饭桌上永远是喧闹的。你的幸福简单，但假如让其他人来换，没人舍得。',
+    scoreKey: 'family', threshold: 8
+  },
+  {
+    tag: '孤独思想家',
+    subtitle: '内心的宇宙，比世界更大',
+    prophecy: '你不是真的孤独，你只是和大多数人不在同一频率。你的世界很安静，但非常深。你会花一整个下午想明白一个别人不在意的问题，你的灵感常常在凌晨三点降临。某些人读到你留下的文字或作品，会感到一种被看见的震颤。',
+    timeline: [
+      { age: '23', event: '开始认真地<em>记录自己的思考</em>' },
+      { age: '30', event: '遇见一位真正懂你的<em>知己</em>' },
+      { age: '38', event: '你的某个想法<em>悄悄影响了一些人</em>' },
+      { age: '55', event: '留下了某种<em>难以被遗忘的东西</em>' }
+    ],
+    traits: ['深刻', '敏感', '内省', '有洞察力', '独立'],
+    highlight: [0, 3],
+    oldAge: '70岁的你，书房里堆满了写满字的笔记本。你学会了享受安静，也学会了在安静里感到满足。你不是孤独，你是一个安静的星球，有自己的轨道。',
+    scoreKey: 'introvert', threshold: 6
+  },
+  {
+    tag: '城市拼命客',
+    subtitle: '野心是我最好看的样子',
+    prophecy: '你对自己从没手软过。当别人在睡觉，你在工作；当别人在抱怨，你在执行。你的简历上写满了别人用十年才攒到的经历。代价是有的，但你认为值得——你想要的生活，别人给不了，只有自己争。',
+    timeline: [
+      { age: '26', event: '第一次在职场上<em>脱颖而出</em>' },
+      { age: '35', event: '拿下一个改变命运的<em>大项目或大机会</em>' },
+      { age: '44', event: '到达一个<em>让年轻时的自己仰望</em>的位置' },
+      { age: '60', event: '开始思考，把经验<em>传递给下一代</em>' }
+    ],
+    traits: ['自律', '目标感强', '抗压', '执行力', '不认输'],
+    highlight: [0, 1, 4],
+    oldAge: '70岁的你，习惯了早起，哪怕退休了也六点准时睁眼。你的一生是一份漂亮的成绩单，当然你知道，成绩单只是副产品，真正让你骄傲的是那些拼搏的瞬间。',
+    scoreKey: 'career', threshold: 8
+  },
+  {
+    tag: '创意炼金师',
+    subtitle: '把生活过成艺术品',
+    prophecy: '你的手里任何东西都会变成某种表达。你不只是在生活，你在创作生活。别人觉得荒诞的想法，你会认真执行；别人走过去的风景，你会停下来研究三十分钟。你的人生会有一段时间不被理解，但那段时间会是你最宝贵的财富。',
+    timeline: [
+      { age: '24', event: '发现自己真正的<em>创作天赋</em>' },
+      { age: '31', event: '做了一件让周围人惊讶的<em>大胆的事</em>' },
+      { age: '40', event: '作品或想法<em>触达了更多人</em>' },
+      { age: '54', event: '成为某个小领域真正意义上的<em>开创者</em>' }
+    ],
+    traits: ['想象力', '感受力强', '不循规蹈矩', '热情', '审美独特'],
+    highlight: [0, 2, 4],
+    oldAge: '70岁的你，家里到处是颜料、乐器或者文字的痕迹。你从来不觉得老去，因为好奇心从未老去。你最好的作品，也许还没写出来。',
+    scoreKey: 'creative', threshold: 8
+  },
+  {
+    tag: '人间摆渡人',
+    subtitle: '治愈别人，也被别人治愈',
+    prophecy: '你有一种特别的能力：让人在你身边感到安心。你的一生会遇见很多人，有些只是过客，有些却会因为你而改变方向。你不一定是最耀眼的，但在别人最难的时候，他们第一个想到的人，往往是你。',
+    timeline: [
+      { age: '28', event: '以某种方式<em>帮助了改变了某人的命运</em>' },
+      { age: '36', event: '建立起一个<em>真正珍惜你的人际圈</em>' },
+      { age: '48', event: '在社区或行业里成为<em>有信誉的引路人</em>' },
+      { age: '63', event: '收到一封让你泪目的<em>感谢信或消息</em>' }
+    ],
+    traits: ['共情力强', '善于倾听', '有温度', '善良', '有感召力'],
+    highlight: [0, 1, 3],
+    oldAge: '70岁的你，会被人主动联系说"当年你说的那句话改变了我"。你会假装记不清，但其实你每一件事都记得。你的馈赠方式是时间和善意，比任何礼物都贵重。',
+    scoreKey: 'empathy', threshold: 8
+  },
+  {
+    tag: '精明实干家',
+    subtitle: '脚踩在地上，走得最稳',
+    prophecy: '你不信运气，你信准备。别人等机会，你在造机会。你的人生里没有太多戏剧性的高光时刻，但你的账单永远好看，你做的决定事后看来几乎没有后悔的。别人说你保守，你知道那叫稳健。',
+    timeline: [
+      { age: '27', event: '做出一个<em>比同龄人早十年</em>才想到的布局' },
+      { age: '38', event: '财务状况在关键时刻<em>给了你最大的自由</em>' },
+      { age: '47', event: '拒绝了一个热门的赌局，事后证明<em>判断正确</em>' },
+      { age: '60', event: '从容退休，<em>提前二十年就准备好了</em>' }
+    ],
+    traits: ['理性', '有计划', '稳健', '不冲动', '执行落地'],
+    highlight: [1, 3],
+    oldAge: '70岁的你，资产配置合理，身体保养得很好，日程表排得满满当当。你的人生是一首有预谋的诗，每个韵脚都在预期之内，但不乏美感。',
+    scoreKey: 'practical', threshold: 8
+  },
+  {
+    tag: '精神流浪汉',
+    subtitle: '不定居，才是我的家',
+    prophecy: '你的灵魂是候鸟型的，哪里有新鲜的风就往哪里飞。你的人生版图会比大多数人宽，代价是有时候找不到"根"的感觉。但你也比任何人更清楚：有故事的人，走到哪里都是风景。',
+    timeline: [
+      { age: '23', event: '第一次独自离开熟悉的地方，<em>打开新世界</em>' },
+      { age: '33', event: '在一个意想不到的城市<em>短暂停留，却留下了深刻的痕迹</em>' },
+      { age: '45', event: '某次邂逅，让你第一次真正<em>想停下来</em>' },
+      { age: '62', event: '最终找到了<em>那个值得驻留的地方</em>' }
+    ],
+    traits: ['自由', '感受力强', '不依赖', '开放', '有故事'],
+    highlight: [0, 4],
+    oldAge: '70岁的你，护照上盖满了戳，手机里的相册要翻很久才能翻到头。你有很多家，但最温暖的那个，终究是某个人在等你的地方。',
+    scoreKey: 'adventure', threshold: 6
+  },
+  {
+    tag: '深情守护者',
+    subtitle: '因为爱，所以愿意',
+    prophecy: '你身上有一种很稀缺的品质：在意。你在意的人，感受得到；你做的事，有温度。你的人生大事，有大半是为了别人——但你不觉得亏，因为看见那些人幸福，就是你的幸福。',
+    timeline: [
+      { age: '29', event: '为了某人做出了<em>需要勇气的牺牲</em>' },
+      { age: '40', event: '成为家庭最可靠的<em>那根柱子</em>' },
+      { age: '53', event: '被自己最在意的人<em>深深地感谢</em>' },
+      { age: '67', event: '看着自己守护的人们幸福，<em>觉得这一生值了</em>' }
+    ],
+    traits: ['深情', '有责任感', '甘于付出', '不计回报', '有大爱'],
+    highlight: [0, 3, 4],
+    oldAge: '70岁的你，照片里总有别人——家人、朋友、学生，各种年龄的脸。你的故事里，你不是主角，但你是每个故事里最不可缺少的人。',
+    scoreKey: 'moral', threshold: 7
+  },
+  {
+    tag: '知识掘金客',
+    subtitle: '脑子里装着一个图书馆',
+    prophecy: '你的快乐来自于"弄懂了"。你天生对世界运转的方式充满好奇，会为了一个答案钻研好几天。你的人生不一定最富有，但你的认知边界一定比大多数人更远。某个时刻，你的一个洞见会成为别人的指路牌。',
+    timeline: [
+      { age: '24', event: '找到了那个<em>让你废寝忘食</em>的研究方向' },
+      { age: '35', event: '把多年积累<em>转化成了真实的成果</em>' },
+      { age: '48', event: '成为某个小圈子里<em>公认的权威</em>' },
+      { age: '60', event: '开始系统地<em>把知识传递出去</em>' }
+    ],
+    traits: ['好奇心旺盛', '专注', '逻辑严谨', '有深度', '善于总结'],
+    highlight: [0, 3],
+    oldAge: '70岁的你，还在读书，还在记笔记，还有一堆没想明白的问题。你从来不觉得自己"懂够了"，这反而是你最了不起的地方。',
+    scoreKey: 'intellectual', threshold: 7
+  },
+  {
+    tag: '生活哲学家',
+    subtitle: '慢下来，才看得见',
+    prophecy: '你不赶路，你在路上。别人在加速的年代，你找到了一种逆流的活法——不是消极，而是你想清楚了什么对你来说真正重要。你的幸福指数，常常让快节奏的人羡慕又不解。',
+    timeline: [
+      { age: '30', event: '主动放弃了一个"应该追求"的<em>机会</em>' },
+      { age: '38', event: '建立起了一套<em>属于自己的生活哲学</em>' },
+      { age: '50', event: '身边的人开始向你<em>请教关于生活的问题</em>' },
+      { age: '65', event: '用平静又充实的日子<em>证明了自己的选择</em>' }
+    ],
+    traits: ['自洽', '有节奏感', '不焦虑', '内心充足', '懂取舍'],
+    highlight: [2, 4],
+    oldAge: '70岁的你，没有惊天动地的故事，但每一天都过得扎实。你喝茶、散步、看云，你知道这不是躺平，这是你经过深思熟虑选择的人生。',
+    scoreKey: 'pleasure', threshold: 6
+  },
+  {
+    tag: '温柔革命者',
+    subtitle: '用善良改变世界',
+    prophecy: '你相信好的事情值得被坚持，你不会因为"没用"就放弃做对的事。你的人生里会有很多人觉得你太认真，但也有少数人因此成为你最忠实的同行者。你的影响力，是一点一滴渗进去的，不显山露水，但真实存在。',
+    timeline: [
+      { age: '26', event: '参与了一件<em>不图回报的事</em>，改变了一些人的生活' },
+      { age: '39', event: '在某个关键时刻，坚持了自己的<em>原则</em>' },
+      { age: '51', event: '成为某个公益、社区或行业<em>改变的推动者</em>' },
+      { age: '66', event: '看见当年埋下的种子<em>开花结果</em>' }
+    ],
+    traits: ['有原则', '心怀善意', '不随波逐流', '有信念', '温而有力'],
+    highlight: [0, 2, 4],
+    oldAge: '70岁的你，身边有一群志同道合的老友。你们年轻时一起做过的事，在不同地方留下了痕迹。你常说"也没做什么大事"，但听到这话的人都想笑。',
+    scoreKey: 'moral', threshold: 6
+  },
+  {
+    tag: '银河漫游者',
+    subtitle: '有些人，天生属于更大的舞台',
+    prophecy: '你的视野装不进一座城市。你总是在问"世界怎么运转"、"我能改变什么"。你的雄心有时会吓到自己，但那才是你真实的尺度。你的人生故事，很可能超出你自己最初的想象。',
+    timeline: [
+      { age: '27', event: '第一次站上一个<em>超出自己预期的舞台</em>' },
+      { age: '36', event: '做了一件<em>跨越边界</em>的大胆决定' },
+      { age: '47', event: '影响力开始<em>辐射到更远的地方</em>' },
+      { age: '60', event: '被某个领域记住，<em>留下了不容易被忘记的印记</em>' }
+    ],
+    traits: ['有大格局', '不设限', '充满能量', '感召力强', '有使命感'],
+    highlight: [0, 3, 4],
+    oldAge: '70岁的你，回顾往昔，会感叹那个年轻的自己"胆子真大"。但你知道，那不是莽撞，那是你对自己能力的提前知晓。你的一生，配得上你的野心。',
+    scoreKey: 'ambition', threshold: 7
+  },
+  {
+    tag: '时光酿酒师',
+    subtitle: '岁月是最好的原料',
+    prophecy: '你不着急。别人用二十年走完的路，你愿意用三十年，但你走过的每一步都印得很深。你的高光时刻往往来得很晚，但也因此更加醇厚。最好的你，是中年以后的那个你。',
+    timeline: [
+      { age: '35', event: '开始真正明白自己<em>想要什么</em>' },
+      { age: '43', event: '厚积薄发，<em>一鸣惊人</em>' },
+      { age: '56', event: '成为同龄人里<em>走得最稳的那个</em>' },
+      { age: '68', event: '活成了<em>很多年轻人羡慕的样子</em>' }
+    ],
+    traits: ['沉稳', '不急功近利', '有后劲', '厚积薄发', '值得等待'],
+    highlight: [1, 3, 4],
+    oldAge: '70岁的你，是那种让人一眼就感觉到"这个人有故事"的那种人。你说话慢，但每句话都有分量。你是那种越老越迷人的人，时光是你最好的化妆师。',
+    scoreKey: 'stable', threshold: 7
+  }
+];
+
+// ─────────────────────────────────────────
+//  状态
+// ─────────────────────────────────────────
+let selectedQuestions = [];
+let currentQ = 0;
+let answerHistory = []; // 每元素: { weights: {...} }
+let scores = {
+  adventure: 0, stable: 0, family: 0, career: 0, social: 0,
+  empathy: 0, moral: 0, intellectual: 0, creative: 0, ambition: 0,
+  introvert: 0, pleasure: 0, practical: 0, solo: 0, future: 0, sensitive: 0
+};
+
+// ─────────────────────────────────────────
+//  工具
+// ─────────────────────────────────────────
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.style.display = 'none';
+  });
+  const el = document.getElementById(id);
+  el.style.display = 'flex';
+  requestAnimationFrame(() => el.classList.add('active'));
+}
+
+function switchScreen(id) {
+  const current = document.querySelector('.screen.active');
+  if (current) {
+    current.style.opacity = '0';
+    current.style.transform = 'translateY(-16px)';
+    current.style.transition = 'opacity 0.3s, transform 0.3s';
+    setTimeout(() => {
+      current.classList.remove('active');
+      current.style.display = 'none';
+      current.style.opacity = '';
+      current.style.transform = '';
+      current.style.transition = '';
+      showScreen(id);
+    }, 300);
+  } else {
+    showScreen(id);
+  }
+}
+
+// ─────────────────────────────────────────
+//  按照阶段分层抽题，保证每阶段都有覆盖
+// ─────────────────────────────────────────
+function pickQuestions() {
+  const groups = { child: [], teen: [], young: [], middle: [], senior: [], elder: [] };
+  QUESTION_BANK.forEach(q => groups[q.ageGroup].push(q));
+  const result = [];
+
+  // 各阶段分配：童年2，青少年2，青年2，中年2，中老年1，退休1
+  const plan = [
+    ['child', 2], ['teen', 2], ['young', 2], ['middle', 2], ['senior', 1], ['elder', 1]
+  ];
+  plan.forEach(([group, count]) => {
+    // 给每道题附加随机分值再排序，比纯 shuffle 更均匀分散
+    const pool = groups[group].map(q => ({ q, r: Math.random() }));
+    pool.sort((a, b) => a.r - b.r);
+    result.push(...pool.slice(0, Math.min(count, pool.length)).map(x => x.q));
+  });
+
+  // 整体再随机排列，年龄段顺序也随机，不是永远从童年开始
+  return shuffle(result);
+}
+
+// ─────────────────────────────────────────
+//  流程
+// ─────────────────────────────────────────
+function startJourney() {
+  // 重置
+  scores = { adventure: 0, stable: 0, family: 0, career: 0, social: 0,
+    empathy: 0, moral: 0, intellectual: 0, creative: 0, ambition: 0,
+    introvert: 0, pleasure: 0, practical: 0, solo: 0, future: 0, sensitive: 0 };
+  currentQ = 0;
+  answerHistory = [];
+  selectedQuestions = pickQuestions();
+  switchScreen('screen-question');
+  setTimeout(renderQuestion, 400);
+}
+
+function renderQuestion() {
+  const q = selectedQuestions[currentQ];
+  const total = selectedQuestions.length;
+
+  document.getElementById('progress-fill').style.width = (currentQ / total * 100) + '%';
+  document.getElementById('q-age-badge').textContent = q.age;
+  document.getElementById('q-num').textContent = `${currentQ + 1} / ${total}`;
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('q-scene').textContent = q.scene;
+
+  // 返回按钮：第一题隐藏，之后显示
+  const backBtn = document.getElementById('q-back-btn');
+  backBtn.classList.toggle('visible', currentQ > 0);
+
+  const list = document.getElementById('options-list');
+  list.innerHTML = '';
+  shuffle(q.options).forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.textContent = opt.text;
+    btn.onclick = () => selectOption(opt, btn);
+    list.appendChild(btn);
+  });
+}
+
+function selectOption(opt, btnEl) {
+  // 视觉反馈
+  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+  btnEl.classList.add('selected');
+
+  // 保存本题答案到历史（用于返回时撤销）
+  answerHistory[currentQ] = { weights: { ...opt.weights } };
+
+  // 累加权重
+  Object.entries(opt.weights).forEach(([key, val]) => {
+    if (scores[key] !== undefined) scores[key] += val;
+    else scores[key] = val;
+  });
+
+  // 延迟进入下一题
+  setTimeout(() => {
+    currentQ++;
+    if (currentQ < selectedQuestions.length) {
+      // 问题过渡动画
+      const qScreen = document.getElementById('screen-question');
+      qScreen.style.opacity = '0';
+      qScreen.style.transform = 'translateY(12px)';
+      qScreen.style.transition = 'opacity 0.25s, transform 0.25s';
+      setTimeout(() => {
+        qScreen.style.opacity = '';
+        qScreen.style.transform = '';
+        qScreen.style.transition = '';
+        renderQuestion();
+      }, 280);
+    } else {
+      // 最后进度100%
+      document.getElementById('progress-fill').style.width = '100%';
+      setTimeout(showLoading, 400);
+    }
+  }, 350);
+}
+
+function goBack() {
+  if (currentQ <= 0) return;
+  // 撤销上一题的权重
+  const prev = answerHistory[currentQ - 1];
+  if (prev) {
+    Object.entries(prev.weights).forEach(([key, val]) => {
+      if (scores[key] !== undefined) scores[key] -= val;
+    });
+    delete answerHistory[currentQ - 1];
+  }
+  currentQ--;
+  // 过渡动画（反向）
+  const qScreen = document.getElementById('screen-question');
+  qScreen.style.opacity = '0';
+  qScreen.style.transform = 'translateY(-12px)';
+  qScreen.style.transition = 'opacity 0.2s, transform 0.2s';
+  setTimeout(() => {
+    qScreen.style.opacity = '';
+    qScreen.style.transform = '';
+    qScreen.style.transition = '';
+    renderQuestion();
+  }, 220);
+}
+
+function showLoading() {
+  switchScreen('screen-loading');
+  const msgs = ['正在推演', '时光倒流中', '命运核算中', '星盘校准中', '人生预言生成中'];
+  let idx = 0;
+  const sub = document.getElementById('loading-sub');
+  const interval = setInterval(() => {
+    sub.textContent = msgs[idx % msgs.length] + '···';
+    idx++;
+  }, 600);
+  setTimeout(() => {
+    clearInterval(interval);
+    computeResult();
+  }, 2800);
+}
+
+// ─────────────────────────────────────────
+//  计算结局
+// ─────────────────────────────────────────
+function computeResult() {
+  let best = null;
+  let bestScore = -Infinity;
+
+  DESTINIES.forEach(d => {
+    const s = scores[d.scoreKey] || 0;
+    // 加入随机扰动，同分时随机选
+    const jitter = Math.random() * 2;
+    if (s + jitter > bestScore) {
+      bestScore = s + jitter;
+      best = d;
+    }
+  });
+
+  // 阈值不够时，随机加权备选
+  if (bestScore < 3) {
+    best = DESTINIES[Math.floor(Math.random() * DESTINIES.length)];
+  }
+
+  renderResult(best);
+}
+
+function renderResult(d) {
+  _lastDestiny = d;
+  document.getElementById('result-tag').textContent = d.tag;
+  document.getElementById('result-subtitle').textContent = d.subtitle;
+  document.getElementById('result-prophecy').textContent = d.prophecy;
+
+  const tl = document.getElementById('result-timeline');
+  tl.innerHTML = d.timeline.map(t => `
+    <li class="timeline-item">
+      <div class="timeline-age">${t.age}</div>
+      <div class="timeline-content">
+        <div class="timeline-event">${t.event}</div>
+      </div>
+    </li>
+  `).join('');
+
+  const traits = document.getElementById('result-traits');
+  traits.innerHTML = d.traits.map((t, i) => `
+    <span class="trait-chip ${d.highlight.includes(i) ? 'highlight' : ''}">${t}</span>
+  `).join('');
+
+  document.getElementById('result-old-age').textContent = d.oldAge;
+
+  switchScreen('screen-result');
+  // 滚到顶部
+  setTimeout(() => {
+    const el = document.getElementById('screen-result');
+    el.scrollTop = 0;
+  }, 100);
+}
+
+// ─────────────────────────────────────────
+//  分享图生成
+// ─────────────────────────────────────────
+const SHARE_URL = 'https://time-machine.2210842132.workers.dev/';
+
+let _lastDestiny = null; // renderResult 时缓存
+
+function openShareModal() {
+  generateShareImage(_lastDestiny, function(dataUrl) {
+    document.getElementById('share-preview').src = dataUrl;
+    document.getElementById('share-modal').classList.add('open');
+  });
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal').classList.remove('open');
+}
+
+function generateShareImage(d, callback) {
+  if (!d) return;
+
+  // 画布尺寸：750×1200（朋友圈竖图）
+  const W = 750, H = 1200;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // ── 背景渐变 ──
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0d0d1a');
+  bg.addColorStop(0.5, '#1a1a2e');
+  bg.addColorStop(1, '#0d0d20');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── 随机星点 ──
+  ctx.fillStyle = 'rgba(232,224,240,0.7)';
+  for (let i = 0; i < 120; i++) {
+    const x = Math.random() * W;
+    const y = Math.random() * H;
+    const r = Math.random() * 1.2 + 0.2;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ── 顶部光晕 ──
+  const glow = ctx.createRadialGradient(W/2, 180, 0, W/2, 180, 320);
+  glow.addColorStop(0, 'rgba(123,111,160,0.25)');
+  glow.addColorStop(1, 'rgba(123,111,160,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, 500);
+
+  // ── 顶部标题 ──
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(169,157,200,0.6)';
+  ctx.font = '26px serif';
+  ctx.fillText('时光穿梭机', W/2, 72);
+
+  ctx.fillStyle = 'rgba(169,157,200,0.35)';
+  ctx.font = '20px sans-serif';
+  ctx.fillText('· 人生预言 ·', W/2, 108);
+
+  // ── 标签徽章 ──
+  const tagY = 160;
+  const tagText = d.tag;
+  ctx.font = 'bold 52px serif';
+  ctx.fillStyle = '#e8d08a';
+  ctx.fillText(tagText, W/2, tagY + 54);
+
+  // 副标题
+  ctx.font = '28px sans-serif';
+  ctx.fillStyle = 'rgba(232,208,138,0.7)';
+  ctx.fillText(d.subtitle, W/2, tagY + 100);
+
+  // 分割线
+  ctx.strokeStyle = 'rgba(201,168,76,0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(80, tagY + 124); ctx.lineTo(W - 80, tagY + 124);
+  ctx.stroke();
+
+  // ── 命运预言（最多3行） ──
+  const prophecyY = tagY + 158;
+  ctx.font = '26px sans-serif';
+  ctx.fillStyle = 'rgba(250,248,244,0.85)';
+  wrapText(ctx, d.prophecy, W/2, prophecyY, W - 160, 42, 4);
+
+  // ── 性格特质 ──
+  const traitsY = prophecyY + 42 * 4 + 48;
+  ctx.font = '22px sans-serif';
+  ctx.fillStyle = 'rgba(169,157,200,0.7)';
+  ctx.fillText('性格特质', W/2, traitsY);
+
+  const chips = d.traits;
+  const chipH = 44, chipR = 22, chipGap = 16;
+  const totalChipW = chips.reduce((acc, t) => acc + measureChipW(ctx, t, chipH), 0) + chipGap * (chips.length - 1);
+  let chipX = (W - totalChipW) / 2;
+  const chipY = traitsY + 22;
+  chips.forEach((t, i) => {
+    const cw = measureChipW(ctx, t, chipH);
+    const isHighlight = d.highlight.includes(i);
+    ctx.save();
+    ctx.beginPath();
+    roundRect(ctx, chipX, chipY, cw, chipH, chipR);
+    ctx.fillStyle = isHighlight ? 'rgba(201,168,76,0.22)' : 'rgba(123,111,160,0.25)';
+    ctx.fill();
+    ctx.strokeStyle = isHighlight ? 'rgba(201,168,76,0.5)' : 'rgba(123,111,160,0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = isHighlight ? '#e8d08a' : 'rgba(250,248,244,0.85)';
+    ctx.font = '22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(t, chipX + cw / 2, chipY + chipH / 2 + 8);
+    chipX += cw + chipGap;
+  });
+
+  // ── 底部二维码区域 ──
+  const qrY = H - 240;
+  ctx.strokeStyle = 'rgba(201,168,76,0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(80, qrY - 32); ctx.lineTo(W - 80, qrY - 32);
+  ctx.stroke();
+
+  ctx.font = '20px sans-serif';
+  ctx.fillStyle = 'rgba(169,157,200,0.5)';
+  ctx.textAlign = 'center';
+  ctx.fillText('扫码开始你的人生预言', W/2, qrY);
+
+  // 生成二维码并绘入
+  const qrSize = 150;
+  const qr = qrcode(0, 'M');
+  qr.addData(SHARE_URL);
+  qr.make();
+  const qrImg = new Image();
+  qrImg.onload = function() {
+    const qrX = (W - qrSize) / 2;
+    ctx.save();
+    ctx.beginPath();
+    roundRect(ctx, qrX - 10, qrY + 16, qrSize + 20, qrSize + 20, 14);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(201,168,76,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+    ctx.drawImage(qrImg, qrX, qrY + 26, qrSize, qrSize);
+
+    ctx.font = '18px sans-serif';
+    ctx.fillStyle = 'rgba(169,157,200,0.35)';
+    ctx.textAlign = 'center';
+    ctx.fillText('时光穿梭机 · 看见你的一生', W/2, H - 28);
+
+    callback(canvas.toDataURL('image/png'));
+  };
+  // qrcode-generator 输出 SVG data URI，转为 Image
+  const svgStr = qr.createSvgTag({ scalable: true, margin: 1 });
+  qrImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+}
+
+// Canvas 工具：自动折行居中文本
+function wrapText(ctx, text, cx, y, maxW, lineH, maxLines) {
+  const chars = text.split('');
+  let line = '';
+  let lineCount = 0;
+  for (let i = 0; i < chars.length; i++) {
+    const test = line + chars[i];
+    if (ctx.measureText(test).width > maxW && line) {
+      if (lineCount >= maxLines - 1) {
+        ctx.fillText(line + '…', cx, y + lineCount * lineH);
+        return;
+      }
+      ctx.fillText(line, cx, y + lineCount * lineH);
+      line = chars[i];
+      lineCount++;
+    } else {
+      line = test;
+    }
+  }
+  if (line) ctx.fillText(line, cx, y + lineCount * lineH);
+}
+
+function measureChipW(ctx, text, chipH) {
+  ctx.font = '22px sans-serif';
+  return ctx.measureText(text).width + chipH * 1.2;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function restart() {
+  switchScreen('screen-welcome');
+}
+
+function showAbout() {
+  alert('时光穿梭机\n\n10个问题，覆盖你从7岁到65岁的人生关键节点。\n每次访问，题目会随机重组，永远不重复。\n回答完毕，你将收到一份专属的人生预言和人生标签。\n\n不预测真实未来，只是一面镜子——\n让你看见某种可能的你。');
+}
+</script>
+</body>
+</html>
